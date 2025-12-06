@@ -1,49 +1,68 @@
-name: Deploy Portfolio (Frontend + Sanity)
+name: Deploy Frontend + Sanity Studio to Azure Static Web Apps
 
 on:
   push:
     branches:
-      - main
+      - dev
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches:
+      - dev
 
 jobs:
-  build-and-deploy:
+  build_and_deploy_job:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
+    name: Build and Deploy
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      # Set Node version
+      - name: Use Node.js 20
+        uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: '20'
 
-      # ------- FRONTEND -------
-      - name: Install frontend deps
-        working-directory: frontend
+      # ---------------- FRONTEND ----------------
+      - name: Install frontend dependencies
+        working-directory: ./frontend
         run: npm install
 
       - name: Build frontend
-        working-directory: frontend
+        working-directory: ./frontend
         run: npm run build
 
-      # ------- SANITY -------
-      - name: Install sanity deps
-        working-directory: sanity-studio
+      # ---------------- SANITY STUDIO ----------------
+      - name: Install sanity studio dependencies
+        working-directory: ./sanity-studio
         run: npm install
 
       - name: Build sanity studio
-        working-directory: sanity-studio
+        working-directory: ./sanity-studio
         run: npm run build
 
-      # ------- DEPLOY -------
+      # ---------------- DEPLOYMENT ----------------
       - name: Deploy to Azure Static Web Apps
+        id: deploy
         uses: Azure/static-web-apps-deploy@v1
         with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_SWA_TOKEN }}
-          action: upload
-          # FRONTEND APP
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_VICTORIOUS_SMOKE_025A05B00 }}
+          action: "upload"
+
+          # Frontend Output
           app_location: "frontend"
           app_build_output_location: "build"
-          # SANITY OUTPUT
+
+          # Sanity Studio Output
           output_location: "sanity-studio/dist"
+
+  close_pull_request_job:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close Pull Request
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_VICTORIOUS_SMOKE_025A05B00 }}
+          action: "close"
